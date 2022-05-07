@@ -10,14 +10,34 @@
 		"Other"
 	],
 	"activationEvents": [
-        "onCommand:log-highlighter.helloWorld"
+        "onCommand:log-highlighter.highlightFile"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "log-highlighter.helloWorld",
-				"title": "Hello World"
+				"command": "log-highlighter.highlightFile",
+				"title": "Log Highlighter: Highlight file"
+			}
+		],
+		"colors": [
+			{
+				"id": "loghighlighter.color1",
+				"description": "Color 1",
+				"defaults": {
+					"dark": "#FF000055",
+					"light": "#FF000055",
+					"highContrast": "#FF000055"
+				}
+			},
+			{
+				"id": "loghighlighter.color2",
+				"description": "Color 2",
+				"defaults": {
+					"dark": "#00FF0055",
+					"light": "#00FF0055",
+					"highContrast": "#00FF0055"
+				}
 			}
 		]
 	},

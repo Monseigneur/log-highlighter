@@ -1,0 +1,6 @@
+Sample log number 2
+[aaaa] some first line
+[bbbb] another line
+[asdf] something important HERE in the middle
+[12] ok something else.
+3423 [OK] something something

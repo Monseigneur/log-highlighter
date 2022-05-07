@@ -1,0 +1,9 @@
+Sample log
+1234- 12 log line cool
+1234-56 another line mjmj
+2334 [asdf] what is going on
+3423 [OK] something something
+
+if (30 * 3 === 9000) {
+    return 1000;
+}
