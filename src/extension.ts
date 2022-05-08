@@ -18,6 +18,71 @@ import * as vscode from 'vscode';
 //		- I think this is why the example for highlighting had package.json:activationEvents = "*",
 //		so that it always triggered instead of when a command was run for the first time.
 
+class HighlightInfo {
+	regEx!: RegExp;
+	color: string;
+	id: string;
+
+	constructor(regExStr: string, color: string, id: string) {
+		this.regEx = new RegExp(regExStr);
+		this.color = color;
+		this.id = id;
+	}
+}
+
+var highlightColors: HighlightInfo[] = [];
+
+function findHighlightInfo(line: string): HighlightInfo | null {
+	for (let hi of highlightColors) {
+		if (hi.regEx.exec(line) !== null) {
+			return hi;
+		}
+	}
+
+	return null;
+}
+
+function initializeInfo(): void {
+	let config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration('log-highlighter');
+
+	let regexps: string[] | undefined = config.get<string[]>('regexps');
+	if (regexps === undefined) {
+		console.log("Regexps missing from config file.");
+
+		return;
+	}
+
+	let colors: string[] | undefined = config.get<string[]>('colors');
+	if (colors === undefined) {
+		console.log("Colors missing from config file.");
+
+		return;
+	}
+
+	console.log(regexps.length + " regexps, " + colors.length + " colors");
+	console.log(regexps);
+	console.log(colors);
+
+	let minPairs = Math.min(regexps.length, colors.length);
+
+	if (minPairs === 0) {
+		console.log("No colors to highlight with!");
+
+		return;
+	}
+
+	// Clear current colors.
+	highlightColors = [];
+
+	for (let i = 0; i < minPairs; i++) {
+		let info = new HighlightInfo(regexps[i], colors[i], "color_" + i);
+		highlightColors.push(info);
+	}
+
+	console.log("highlightColors:");
+	console.log(highlightColors);
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -33,6 +98,9 @@ export function activate(context: vscode.ExtensionContext) {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from Log Highlighter!');
+
+		initializeInfo();
+		updateDecorations();
 	});
 
 	context.subscriptions.push(disposable);
@@ -84,9 +152,11 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	let activeEditor = vscode.window.activeTextEditor;
+	// let activeEditor = vscode.window.activeTextEditor;
 
 	function updateDecorations() {
+		let activeEditor = vscode.window.activeTextEditor;
+
 		console.log("updateDecorations");
 		if (!activeEditor) {
 			return;
@@ -94,11 +164,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const regEx = /\d+/g;
 		const text = activeEditor.document.getText();
-		const text2 = activeEditor.document.getText();
 		const smallNumbers: vscode.DecorationOptions[] = [];
 		const largeNumbers: vscode.DecorationOptions[] = [];
-		const fullLines: vscode.DecorationOptions[] = [];
-		const lines: vscode.TextLine[] = [];
 
 		let match;
 		while ((match = regEx.exec(text))) {
@@ -115,15 +182,20 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 
-		const testRegEx = /mjmj/;
+		let highlightMap = new Map<HighlightInfo, vscode.Range[]>();
 
 		let i = 0;
 		for (i = 0; i < activeEditor.document.lineCount; i++) {
 			let line = activeEditor.document.lineAt(i);
-			lines.push(line);
 
-			if (testRegEx.exec(line.text) !== null) {
-				fullLines.push({range: line.range});
+			let highlightInfo = findHighlightInfo(line.text);
+
+			if (highlightInfo !== null) {
+				if (!highlightMap.has(highlightInfo)) {
+					highlightMap.set(highlightInfo, []);
+				}
+
+				highlightMap.get(highlightInfo)?.push(line.range);
 			}
 		}
 
@@ -131,13 +203,25 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log(smallNumbers);
 		console.log("large:");
 		console.log(largeNumbers);
-		console.log("lines:");
-		console.log(fullLines);
+		console.log("highlight map:");
+		console.log(highlightMap);
 
-		// MJMJ looks like the colors will stack if multiple are applied to the same line.
-		activeEditor.setDecorations(smallNumberDecorationType, smallNumbers);
-		activeEditor.setDecorations(largeNumberDecorationType, largeNumbers);
-		activeEditor.setDecorations(fullLineDecorationType, fullLines);
+		// Set the decorations.
+		for (let entry of highlightMap.entries()) {
+			let decorationType = vscode.window.createTextEditorDecorationType({
+				backgroundColor: entry[0].color
+			});
+
+			let decorations: vscode.DecorationOptions[] = [];
+
+			for (let r of entry[1]) {
+				decorations.push({
+					range: r
+				});
+			}
+
+			activeEditor.setDecorations(decorationType, decorations);
+		}
 	}
 
 	// MJMJ want to change it so that it only updates when sending a command or if the file in the same
@@ -155,24 +239,24 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	if (activeEditor) {
-		triggerUpdateDecorations();
-	}
+	// if (activeEditor) {
+	// 	triggerUpdateDecorations();
+	// }
 
 	// MJMJ If this is removed, then the highlighting doesn't automatically apply on a new file after first
 	// activated on another file, but returning to the same file will remove the highlighting also.
-	vscode.window.onDidChangeActiveTextEditor(editor => {
-		activeEditor = editor;
-		if (editor) {
-			triggerUpdateDecorations();
-		}
-	}, null, context.subscriptions);
+	// vscode.window.onDidChangeActiveTextEditor(editor => {
+	// 	activeEditor = editor;
+	// 	if (editor) {
+	// 		triggerUpdateDecorations();
+	// 	}
+	// }, null, context.subscriptions);
 
-	vscode.workspace.onDidChangeTextDocument(event => {
-		if (activeEditor && event.document === activeEditor.document) {
-			triggerUpdateDecorations(true);;
-		}
-	}, null, context.subscriptions);
+	// vscode.workspace.onDidChangeTextDocument(event => {
+	// 	if (activeEditor && event.document === activeEditor.document) {
+	// 		triggerUpdateDecorations(true);
+	// 	}
+	// }, null, context.subscriptions);
 }
 
 // this method is called when your extension is deactivated

@@ -39,7 +39,23 @@
 					"highContrast": "#00FF0055"
 				}
 			}
-		]
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Log Highlighter Configuration",
+			"properties": {
+				"log-highlighter.regexps": {
+					"type": "array",
+					"default": [],
+					"description": "Use this to specify regex strings to use for coloring. It should match 1 to 1 with log-highlighter.colors"
+				},
+				"log-highlighter.colors": {
+					"type": "array",
+					"default": [],
+					"description": "Use this to specify the colors to highlight with. It should match 1 to 1 with log-highlighter.regexps"
+				}
+			}
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
